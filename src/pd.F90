@@ -1,6 +1,7 @@
 PROGRAM pd
 
-   use, intrinsic :: iso_fortran_env, only: stderr=>error_unit
+   use, intrinsic :: iso_fortran_env, only: stderr=>error_unit, &
+                                            stdout=>output_unit
    implicit none
 
 #ifdef DEBUG
@@ -51,6 +52,7 @@ PROGRAM pd
    integer, allocatable :: missing_pets(:)
 
    integer, save :: total_calls_DFS = 0
+   logical, save :: solution_found
 
    ! List of origin/destination nodes.
    ! This includes the car origin and all nodes with pets or homes.
@@ -166,16 +168,20 @@ PROGRAM pd
    do i = 1, num_points
       do j = 1, num_points
          if ( any(j==graph(i)%neighbours(:)) .and. .not.&
-              any(i==graph(j)%neighbours(:)) ) STOP 'INCONSISTENT NEIGHBOURS'
+              any(i==graph(j)%neighbours(:)) ) then
+            STOP 'ERROR: INCONSISTENT NEIGHBOURS'
+         end if
       end do
    end do
 
    deallocate(missing_links)
 
+   ! Print lattice
    call print_lattice(graph, full_lattice, full_lattice)
 
    ! Compute distances between nodes
-   write(*,*) 'Computing distances between nodes...'
+   write(stdout,'(a)', advance='no') 'Computing distances between nodes...'
+   if (debug) write(*,'(a)') ''
    allocate(aux_dists(num_points))
    do i = 1, num_points
       call Dijkstra(graph, i, aux_dists)
@@ -183,13 +189,13 @@ PROGRAM pd
    end do
    deallocate(aux_dists)
 
-   write(*,'(a)') '... done'
+   write(stdout,'(a)') '... done'
 
    ! Check consistency of distances
    do i = 1, num_points
       do j = 1, num_points
          if (graph(i)%dists(j) .ne. graph(j)%dists(i)) then
-            STOP 'INCONSISTENT DISTANCES'
+            STOP 'ERROR: INCONSISTENT DISTANCES'
          end if
       end do
    end do
@@ -197,8 +203,8 @@ PROGRAM pd
    ! Write graph with distances
    if (debug) then
       do i = 1, num_points
-         write(*,*) 'Distances to point ', i, ' with coordinates ', &
-              graph(i)%x, graph(i)%y
+         write(stdout,'(a,i0,a,i0,1X,i0)') 'Distances to point ', i, &
+              ' with coordinates ', graph(i)%x, graph(i)%y
          aux_dists_2D = full_lattice
          do j = 1, num_points
             aux_dists_2D(graph(j)%x,graph(j)%y) = graph(i)%dists(j)
@@ -219,8 +225,8 @@ PROGRAM pd
       pets(i) = full_lattice(xp,yp)
       homes(i) = full_lattice(xh,yh)
    end do
-   if (any(pets==0)) STOP 'Pet cannot be in inexisting node.'
-   if (any(homes==0)) STOP 'Home cannot be in inexisting node.'
+   if (any(pets==0)) STOP 'ERROR: PET CANNOT BE IN INEXISTING NODE.'
+   if (any(homes==0)) STOP 'ERROR: HOME CANNOT BE IN INEXISTING NODE.'
    close(fid)
 
    ! Read car
@@ -229,9 +235,12 @@ PROGRAM pd
    read(fid,*) car_max_dist
    read(fid,*) xc, yc
    car_origin = full_lattice(xc, yc)
-   if (any(homes==0)) STOP 'Car origin cannot be in inexisting node.'
+   if (any(homes==0)) STOP 'ERROR: CAR ORIGIN CANNOT BE IN INEXISTING NODE.'
    close(fid)
 
+   deallocate(full_lattice)
+
+   ! Initialisations
    num_steps = 2*num_pets + 1
    allocate(node_sequence(num_steps))
 
@@ -244,12 +253,20 @@ PROGRAM pd
    car(:) = 0
    car_dist = 0
    num_pets_in_car = 0
+   solution_found = .false.
 
+   ! Call DFS (recursive subroutine).
    call DFS(node_sequence, step, car, car_dist, num_pets_in_car, &
         missing_pets, num_missing_pets)
 
-   write(*,*) 'Total calls to DFS', total_calls_DFS
-   STOP 'Could not find an solution.'
+   ! Output final result.
+   write(stdout,'(a,i0)') 'Number of calls to DFS: ', total_calls_DFS
+   if (solution_found) then
+      write(stdout,'(a)') 'SOLUTION FOUND:'
+      write(stdout,'(100000(i0, 2X))') node_sequence
+   else
+      STOP 'ERROR: COULD NOT FIND A SOLUTION.'
+   end if
 
 CONTAINS
 
@@ -279,6 +296,7 @@ CONTAINS
 
       total_calls_DFS = total_calls_DFS + 1
 
+      ! Update lists after last step.
       if (step > 1) then
          if (any(seq(step)==pets)) then
             ! in the last step we picked up a pet
@@ -311,6 +329,7 @@ CONTAINS
 
       step = step + 1
 
+      ! Create list of possible destinations.
       if (num_pets_in_car==4) then
          num_possible_dests = 4
          possible_dests(1:4) = car(1:4)
@@ -320,22 +339,22 @@ CONTAINS
          possible_dests(num_pets_in_car+1:num_possible_dests) = missing_pets(1:num_missing_pets)
       end if
 
+      num_missing_dests = num_steps - step
+
+      ! Loop over possible destinations
       do i = 1, num_possible_dests
          seq(step) = possible_dests(i)
          new_car_dist = car_dist + graph(seq(step-1))%dists(seq(step))
-         num_missing_dests = num_steps - step
          if (new_car_dist + num_missing_dests > car_max_dist) then
+            ! Discard: more missing destinations than possible steps.
             cycle
          else if (num_missing_dests == 0) then
-            write(*,'(a)') repeat('=',60)
-            write(*,'(100000(i0, 2X))') seq
-            write(*,'(a)') repeat('=',60)
-            write(*,*) 'Total calls to DFS', total_calls_DFS
-            STOP 'SOLUTION FOUND'
+            solution_found = .true.
+            return
          else
             call DFS(seq, step, car, new_car_dist, num_pets_in_car, &
                  missing_pets, num_missing_pets)
-!                 missing_homes, num_missing_homes)
+            if (solution_found) return
          end if
       end do
       seq(step) = 0
@@ -361,7 +380,7 @@ CONTAINS
       end do
       write(stderr,*) 'VAL', val
       write(stderr,*) 'ARRAY', array
-      STOP 'Could not find val in array.'
+      STOP 'ERROR: MYFINDLOC COULD NOT FIND VAL IN ARRAY.'
    END FUNCTION myfindloc
 
 !-------------------------------------------------------------------------------

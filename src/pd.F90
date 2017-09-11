@@ -47,9 +47,7 @@ PROGRAM pd
    integer :: car(4)
    integer :: num_steps
    integer :: step
-!   integer :: num_missing_homes
    integer :: num_missing_pets
-!   integer, allocatable :: missing_homes(:)
    integer, allocatable :: missing_pets(:)
 
    integer, save :: total_calls_DFS = 0
@@ -85,7 +83,7 @@ PROGRAM pd
    allocate(full_lattice(len_x,len_y))
    full_lattice = 1
    do i = 1, num_missing_points
-      full_lattice(missing_points(1,i), missing_points(2,i)) = 0 
+      full_lattice(missing_points(1,i), missing_points(2,i)) = 0
    end do
 
    ! List of missing points is no longer needed
@@ -183,7 +181,8 @@ PROGRAM pd
       call Dijkstra(graph, i, aux_dists)
       graph(i)%dists = aux_dists ! this will allocate on-the-fly the LHS array
    end do
-   
+   deallocate(aux_dists)
+
    write(*,'(a)') '... done'
 
    ! Check consistency of distances
@@ -239,9 +238,6 @@ PROGRAM pd
    allocate(missing_pets(num_pets))
    missing_pets = pets
    num_missing_pets = num_pets
-!   allocate(missing_homes(num_pets))
-!   missing_homes = homes
-!   num_missing_homes = num_pets
 
    node_sequence(1) = car_origin
    step = 1
@@ -251,7 +247,6 @@ PROGRAM pd
 
    call DFS(node_sequence, step, car, car_dist, num_pets_in_car, &
         missing_pets, num_missing_pets)
-!        missing_homes, num_missing_homes)
 
    write(*,*) 'Total calls to DFS', total_calls_DFS
    STOP 'Could not find an solution.'
@@ -262,24 +257,19 @@ CONTAINS
 
    RECURSIVE SUBROUTINE DFS(seq, step, old_car, car_dist, old_num_pets_in_car, &
         old_missing_pets, old_num_missing_pets)
-!        old_missing_homes, old_num_missing_homes)
 
       integer, intent(inout) :: seq(:)
       integer, intent(inout) :: step
       integer, intent(in) :: car_dist
       integer, intent(in) :: old_num_pets_in_car
       integer, intent(in) :: old_num_missing_pets
-!      integer, intent(in) :: old_num_missing_homes
       integer, intent(in) :: old_car(:)
       integer, intent(in) :: old_missing_pets(:)
-!      integer, intent(in) :: old_missing_homes(:)
       integer :: new_car_dist
       integer :: num_pets_in_car
       integer :: num_missing_pets
-!      integer :: num_missing_homes
       integer :: car(4)
       integer :: missing_pets(size(old_missing_pets))
-!      integer :: missing_homes(size(old_missing_homes))
 
       ! Local variables.
       integer :: num_missing_dests
@@ -291,34 +281,24 @@ CONTAINS
 
       if (step > 1) then
          if (any(seq(step)==pets)) then
-!            write(*,*) 'Picked'
             ! in the last step we picked up a pet
             num_pets_in_car = old_num_pets_in_car + 1
             ! add the home of the pet to the list of addresses of the car
             i = myfindloc(pets, seq(step))
-!            write(*,*) 'I', i
-!            write(*,*) 'pets', pets
-!            write(*,*) 'homes', homes
             car(1:old_num_pets_in_car) = old_car(1:old_num_pets_in_car)
             car(num_pets_in_car) = homes(i)
-!            write(*,*) 'CCAARR', car(:num_pets_in_car)
             ! update the list of pets that still need to be picked
             i = myfindloc(old_missing_pets, seq(step))
             missing_pets(1:i-1) = old_missing_pets(1:i-1)
             num_missing_pets = old_num_missing_pets - 1
             missing_pets(i:num_missing_pets) = old_missing_pets(i+1:old_num_missing_pets)
          else
-!            write(*,*) 'Dropped'
             ! in the last step we dropped a pet at a home
             ! update the list of pets in car
             i = myfindloc(old_car, seq(step))
             car(1:i-1) = old_car(1:i-1)
             num_pets_in_car = old_num_pets_in_car - 1
             car(i:num_pets_in_car) = old_car(i+1:old_num_pets_in_car)
-!            i = myfindloc(missing_homes, seq(step))
-!            missing_homes(1:i-1) = old_missing_homes(1:i-1)
-!            missing_homes(i:num_missing_homes-1) = old_missing_homes(i+1:num_missing_homes)
-!            num_missing_homes = old_num_missing_homes - 1
             ! copy list of pets - they are the same
             num_missing_pets = old_num_missing_pets
             missing_pets(1:num_missing_pets) = old_missing_pets(1:num_missing_pets)
@@ -332,11 +312,9 @@ CONTAINS
       step = step + 1
 
       if (num_pets_in_car==4) then
-!         write(*,*) 'acar'
          num_possible_dests = 4
          possible_dests(1:4) = car(1:4)
       else
-!         write(*,*) 'bcar'
          possible_dests(1:num_pets_in_car) = car(1:num_pets_in_car)
          num_possible_dests = num_pets_in_car + num_missing_pets
          possible_dests(num_pets_in_car+1:num_possible_dests) = missing_pets(1:num_missing_pets)
@@ -346,12 +324,6 @@ CONTAINS
          seq(step) = possible_dests(i)
          new_car_dist = car_dist + graph(seq(step-1))%dists(seq(step))
          num_missing_dests = num_steps - step
-!         write(*,*) ' '
-!         write(*,*) 'MP', missing_pets(1:num_missing_pets)
-!         write(*,*) 'CAR', car(1:num_pets_in_car)
-!         write(*,*) 'PD', possible_dests(1:num_possible_dests)
-!         write(*,*) 'S', step
-!         write(*,*) 'TSE', seq(:step)
          if (new_car_dist + num_missing_dests > car_max_dist) then
             cycle
          else if (num_missing_dests == 0) then
@@ -394,21 +366,21 @@ CONTAINS
 
 !-------------------------------------------------------------------------------
 
-   FUNCTION car_distance(seq, step, g) result(d)
-      implicit none
-
-      integer, intent(in) :: seq(:)
-      integer, intent(in) :: step
-      type(POINT), intent(in) :: g(:)
-
-      integer :: d
-      integer :: i
-
-      d = 0
-      do i = 0, step-1
-         d = d + g(seq(i))%dists(j)
-      end do
-   END FUNCTION car_distance
+!   FUNCTION car_distance(seq, step, g) result(d)
+!      implicit none
+!
+!      integer, intent(in) :: seq(:)
+!      integer, intent(in) :: step
+!      type(POINT), intent(in) :: g(:)
+!
+!      integer :: d
+!      integer :: i
+!
+!      d = 0
+!      do i = 0, step-1
+!         d = d + g(seq(i))%dists(j)
+!      end do
+!   END FUNCTION car_distance
 
 !-------------------------------------------------------------------------------
 
@@ -452,7 +424,7 @@ CONTAINS
 
       lx = size(lattice,1)
       ly = size(lattice,2)
-      
+
       ! Print lattice
       do j = 1, ly
          do i = 1, lx
@@ -506,7 +478,7 @@ CONTAINS
       type(POINT), intent(in)  :: g(:)   ! Graph
       integer,     intent(in)  :: origin
       integer,     intent(out) :: dist(size(g))
-      
+
       integer :: previous(size(g))
       logical :: still_active(size(g))
 
@@ -536,7 +508,7 @@ CONTAINS
 
       if (debug) then
          write(*,*) 'origin', origin
-         write(*,*) 'PREVIOUS', previous
+         write(*,*) 'previous', previous
          write(*,*) 'dist', dist
       end if
 

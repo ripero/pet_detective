@@ -1,6 +1,8 @@
 # pet_detective
-This project provides a software that solves the Pet Detective game,
-which is part of the Lumosity suite.
+This project provides a software that solves the
+[Pet Detective](https://www.lumosity.com/press/news/en-blog/2017/5/17/pet-detective-behind-the-game)
+game,
+which is part of the [Lumosity](https://www.lumosity.com/) suite.
 
 ## Compilation
 The source code is written in Fortran 2008.

@@ -241,8 +241,8 @@ PROGRAM pd
       pets(i) = full_lattice(xp,yp)
       homes(i) = full_lattice(xh,yh)
    end do
-   if (any(pets==0)) STOP 'ERROR: PET CANNOT BE IN INEXISTING NODE.'
-   if (any(homes==0)) STOP 'ERROR: HOME CANNOT BE IN INEXISTING NODE.'
+   if (any(pets==0)) STOP 'ERROR: PET CANNOT BE IN NON-EXISTENT NODE.'
+   if (any(homes==0)) STOP 'ERROR: HOME CANNOT BE IN NON-EXISTENT NODE.'
    close(fid)
 
    ! Read car
@@ -251,7 +251,7 @@ PROGRAM pd
    read(fid,*) car_max_dist
    read(fid,*) xc, yc
    car_origin = full_lattice(xc, yc)
-   if (car_origin==0) STOP 'ERROR: CAR ORIGIN CANNOT BE IN INEXISTING NODE.'
+   if (car_origin==0) STOP 'ERROR: CAR ORIGIN CANNOT BE IN NON-EXISTENT NODE.'
    close(fid)
 
    deallocate(full_lattice)

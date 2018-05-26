@@ -251,7 +251,7 @@ PROGRAM pd
    read(fid,*) car_max_dist
    read(fid,*) xc, yc
    car_origin = full_lattice(xc, yc)
-   if (any(homes==0)) STOP 'ERROR: CAR ORIGIN CANNOT BE IN INEXISTING NODE.'
+   if (car_origin==0) STOP 'ERROR: CAR ORIGIN CANNOT BE IN INEXISTING NODE.'
    close(fid)
 
    deallocate(full_lattice)

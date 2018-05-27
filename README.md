@@ -98,7 +98,7 @@ then the contents of file `missing_links.dat` should be:
 This file should always have two lines:
 * The first line must consist of a single integer number:
 the total distance that the car can travel.
-* The second line should be the x andd y coordinates
+* The second line should be the x and y coordinates
 of the initial position of the car.
 
 For example, if the car can travel a distance of 14 intersections
@@ -156,7 +156,7 @@ SOLUTION FOUND:
 14  15  16  24  23  22  13  17  9  10  18  19  20  11  7  6  5  1  2  4  3
 ```
 The output starts with a sketch of the grid,
-with all their nodes and existing links.
+with all its nodes and existing links.
 Each node is given a number.
 If a solution is found, the sequence of nodes
 that forms the solution will be provided in the last line.

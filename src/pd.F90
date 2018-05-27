@@ -137,6 +137,17 @@ PROGRAM pd
    end do
    close(fid)
 
+   ! Check validity of missing links
+   if (any(missing_links<1)) STOP 'ERROR: MISSING LINKS REQUIRE POSITIVE COORDINATES.'
+   if (any(missing_links(1,3:)>len_x)) STOP 'ERROR: MISSING LINK WITH X COORDINATE TOO BIG.'
+   if (any(missing_links(2,4:)>len_y)) STOP 'ERROR: MISSING LINK WITH Y COORDINATE TOO BIG.'
+   do i = 1, num_missing_links
+      dx = abs(missing_links(3,i) - missing_links(1,i))
+      dy = abs(missing_links(4,i) - missing_links(2,i))
+      if (.not. (((dx==0).and.(dy==1)).or.((dx==1).and.(dy==0)))) &
+           STOP 'ERROR: FUTILE MISSING LINK REFERS TO NON-NEIGHBOURING NODES.'
+   end do
+
    ! Create lists of neighbours
    do i = 1, num_points
       num_links = 0

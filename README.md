@@ -1,3 +1,5 @@
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
 # pet_detective
 This project provides a software that solves the
 [Pet Detective](https://www.lumosity.com/press/news/en-blog/2017/5/17/pet-detective-behind-the-game)
